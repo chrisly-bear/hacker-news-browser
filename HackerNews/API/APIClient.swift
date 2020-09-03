@@ -97,7 +97,9 @@ struct Story: Equatable {
     var info: String {
         ["\(score) points", by, date.postTimeAgo].compactMap { $0 }.joined(separator: " · ")
     }
-    
+}
+
+extension Story {
     fileprivate init(_ item: Item) {
         self.by = item.by ?? ""
         self.descendants = item.descendants ?? 0
