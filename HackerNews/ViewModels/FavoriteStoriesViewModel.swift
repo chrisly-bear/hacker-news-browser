@@ -9,32 +9,33 @@
 import UIKit
 
 class FavoriteStoriesViewModel: StoriesViewModelType {
+
     var hasMore: Bool = false
     var canShowInstruction: Bool {
         return true
     }
-    func loadNext() {
-    }
-    
-    
+    var favoritesStore: FavoritesStore
     var stories: [Story] = [] {
         didSet {
             delegate?.storiesViewModelUpdated(self)
         }
     }
-    
     weak var delegate: StoriesViewModelDelegate?
     let api: APIClient = APIClient()
     
+    init(favoritesStore: FavoritesStore) {
+        self.favoritesStore = favoritesStore
+        favoritesStore.observer = self
+    }
+
     func load() {
-        api.stories(for: FavoritesStore.shared.favorites) { (stories) in
+        api.stories(for: favoritesStore.favorites) { (stories) in
             self.stories = stories
         }
     }
-    
-    init() {
-        FavoritesStore.shared.observer = self
-    }
+
+    func loadNext() { }
+
 }
 
 extension FavoriteStoriesViewModel: FavoriteStoreObserver {
