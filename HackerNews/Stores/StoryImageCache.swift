@@ -10,25 +10,31 @@ import Foundation
 import UIKit
 
 class StoryImageCache {
-    var storyImageInfos: [String: StoryImageInfo] = [:]
-    let key = "touchIcon"
-    let userDefaults: UserDefaults
-    static let shared = StoryImageCache()
+
+    private var storyImageInfos: [String: StoryImageInfo] = [:]
+    static var key: String {
+        return "touchIcon"
+    }
+    private let userDefaults: UserDefaults
+    private let notificationCenter = NotificationCenter.default
+    var imageInfos: [String: StoryImageInfo] {
+        return storyImageInfos
+    }
     
     init(userDefaults: UserDefaults = UserDefaults.standard) {
         self.userDefaults = userDefaults
-        if let cached = userDefaults.data(forKey: key),
+        if let cached = userDefaults.data(forKey: StoryImageCache.key),
             let decoded = try? JSONDecoder().decode([String: StoryImageInfo].self, from: cached) {
                 self.storyImageInfos = decoded
         }
-        NotificationCenter.default.addObserver(self, selector: #selector(didEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        self.notificationCenter.addObserver(self, selector: #selector(didEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
     }
     
     deinit {
-        NotificationCenter.default.removeObserver(self)
+        notificationCenter.removeObserver(self)
     }
     
-    func addTouchIcon(storyHost: String, storyImageInfo: StoryImageInfo) {
+    func addStoryImageInfo(storyHost: String, storyImageInfo: StoryImageInfo) {
         storyImageInfos[storyHost] = storyImageInfo
     }
     
@@ -38,7 +44,7 @@ class StoryImageCache {
     
     private func save() {
         let converted = try? JSONEncoder().encode(storyImageInfos)
-        userDefaults.set(converted, forKey: key)
+        userDefaults.set(converted, forKey: StoryImageCache.key)
     }
     
 }
