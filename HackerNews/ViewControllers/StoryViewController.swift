@@ -15,7 +15,8 @@ class StoryViewController: UIViewController {
     private let api = APIClient()
     private var commentSections: [[Comment]] = []
     private var headerImage: UIImage?
-
+    private let favoritesStore: FavoritesStore
+    private let favoritesBarButtonItem = FavoritesBarButtonItem()
     private let tableView: UITableView = {
         let tableView = UITableView()
         tableView.backgroundColor = .systemBackground
@@ -27,22 +28,26 @@ class StoryViewController: UIViewController {
         tableView.register(StoryViewHeaderCell.self, forCellReuseIdentifier: "StoryViewHeaderCell")
         return tableView
     }()
-    
-    
-    init(_ story: Story) {
+
+    init(story: Story, favoritesStore: FavoritesStore) {
         self.story = story
+        self.favoritesStore = favoritesStore
         super.init(nibName: nil, bundle: nil)
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    deinit {
+        favoritesStore.removeObserver(self)
+    }
     
     override func loadView() {
         super.loadView()
-        
-        navigationItem.largeTitleDisplayMode = .never
+
         view.addSubview(tableView)
+
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint                      (equalTo: view.topAnchor),
             tableView.trailingAnchor.constraint                 (equalTo: view.trailingAnchor),
@@ -53,14 +58,20 @@ class StoryViewController: UIViewController {
     
     override func viewDidLoad() {
         super.viewDidLoad()
-        
+
         tableView.delegate = self
         tableView.dataSource = self
+        favoritesStore.addObserver(self)
         getComments(of: self.story)
         ogImage(story) { (image) in
             self.headerImage = image
             self.tableView.reloadRows(at: [IndexPath(row: 0, section: 0)], with: .none)
         }
+        navigationItem.largeTitleDisplayMode = .never
+        favoritesBarButtonItem.inFavorites = favoritesStore.has(story: story.id)
+        favoritesBarButtonItem.target = self
+        favoritesBarButtonItem.action = #selector(favoritesBarButtonTapped)
+        navigationItem.rightBarButtonItems = [favoritesBarButtonItem]
     }
     
     private func getComments(of story: Story) {
@@ -92,7 +103,17 @@ class StoryViewController: UIViewController {
             }
         }
     }
-    
+
+    @objc func favoritesBarButtonTapped() {
+        if favoritesStore.has(story: story.id) {
+            favoritesStore.remove(storyId: story.id)
+            favoritesBarButtonItem.inFavorites = false
+        } else {
+            favoritesStore.add(storyId: story.id)
+            favoritesBarButtonItem.inFavorites = true
+        }
+    }
+
 }
 
 extension StoryViewController: UITableViewDelegate, UITableViewDataSource {
@@ -169,4 +190,22 @@ extension StoryViewController: CommentCellDelegate {
     private func showSafariViewController(for url: URL) {
         present(SFSafariViewController(url: url), animated: true)
     }
+}
+
+extension StoryViewController: FavoriteStoreObserver {
+
+    func favoriteStoreUpdated(_ store: FavoritesStore) {
+        favoritesBarButtonItem.inFavorites = favoritesStore.has(story: story.id)
+    }
+
+}
+
+class FavoritesBarButtonItem: UIBarButtonItem {
+
+    var inFavorites: Bool = true {
+        didSet {
+            image = inFavorites ? UIImage(systemName: "star.fill") : UIImage(systemName: "star")
+        }
+    }
+
 }

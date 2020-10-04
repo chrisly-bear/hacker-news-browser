@@ -10,15 +10,12 @@ import UIKit
 import SafariServices
 
 class SearchViewController: UIViewController {
+
+    var viewModel: SearchViewModel
+    var stories: [Story] = []
     
-    let api = APIClient()
-    var stories: [Story] = [] {
-        didSet {
-            instructionView.isHidden = stories.count != 0
-        }
-    }
-    
-    init(title: String) {
+    init(viewModel: SearchViewModel, title: String) {
+        self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
         self.title = title
     }
@@ -36,25 +33,17 @@ class SearchViewController: UIViewController {
         return tableView
     }()
     
-    let instructionLabel: UILabel = {
+    private let informationLabel: UILabel = {
         let label = UILabel()
         label.translatesAutoresizingMaskIntoConstraints = false
         label.numberOfLines = 0
         label.font = .preferredFont(forTextStyle: .title3)
-        label.textColor = .systemGray
-        label.text = "Search stories and results to show up here"
+        label.textColor = .secondaryLabel
         label.textAlignment = .center
+        label.backgroundColor = .systemBackground
         return label
     }()
-    
-    let instructionView: UIView = {
-        let view = UIView()
-        view.translatesAutoresizingMaskIntoConstraints = false
-        view.backgroundColor = .systemBackground
-        return view
-    }()
 
-    
     private let searchController: UISearchController = {
         let searchController = UISearchController(searchResultsController: nil)
         searchController.obscuresBackgroundDuringPresentation = false
@@ -63,25 +52,18 @@ class SearchViewController: UIViewController {
 
     override func loadView() {
         super.loadView()
-        
+
+        view.backgroundColor = .systemBackground
         view.addSubview(tableView)
-        view.addSubview(instructionView)
-        instructionView.addSubview(instructionLabel)
+        view.addSubview(informationLabel)
         
         NSLayoutConstraint.activate([
             tableView.topAnchor.constraint(equalTo: view.topAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            
-            instructionView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
-            instructionView.leadingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.leadingAnchor),
-            instructionView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
-            instructionView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor),
-            
-            instructionLabel.centerYAnchor.constraint(equalTo: instructionView.centerYAnchor),
-            instructionLabel.leadingAnchor.constraint(equalTo: instructionView.leadingAnchor, constant: 100),
-            instructionLabel.trailingAnchor.constraint(equalTo: instructionView.trailingAnchor, constant: -100)
+            informationLabel.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            informationLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor)
         ])
     }
     
@@ -92,17 +74,8 @@ class SearchViewController: UIViewController {
         tableView.delegate = self
         tableView.dataSource = self
         searchController.searchBar.delegate = self
-    }
-    
-    func searchStories(searchWord: String) {
-        api.searchStories(searchText: searchWord) { (result) in
-            if case .success(let stories) = result {
-                self.stories = stories
-                DispatchQueue.main.async {
-                    self.tableView.reloadData()
-                }
-            }
-        }
+        viewModel.outputs.delegate = self
+        viewModel.inputs.viewDidLoad()
     }
     
 }
@@ -130,7 +103,7 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
         if let url = story.url {
             showSafariViewController(for: url)
         } else {
-            navigationController?.pushViewController(StoryViewController(story), animated: true)
+            navigationController?.pushViewController(StoryViewController(story: story, favoritesStore: viewModel.favoritesStore), animated: true)
         }
         tableView.deselectRow(at: indexPath, animated: true)
     }
@@ -150,7 +123,7 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
 extension SearchViewController: UISearchBarDelegate {
     
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
-        searchStories(searchWord: searchText)
+        viewModel.inputs.searchTextDidChange(searchText)
     }
 }
 
@@ -161,8 +134,26 @@ extension SearchViewController: StoryCellDelegate {
             return
         }
         let story = self.stories[indexPath.row]
-        let storyViewController = StoryViewController(story)
+        let storyViewController = StoryViewController(story: story, favoritesStore: viewModel.favoritesStore)
         navigationController?.pushViewController(storyViewController, animated: true)
     }
     
+}
+
+extension SearchViewController: SearchViewModelDelegate {
+
+    func show(tableView shouldShowTableView: Bool, informationLabel shouldShowInformationLabel: Bool) {
+        tableView.isHidden = !shouldShowTableView
+        informationLabel.isHidden = !shouldShowInformationLabel
+    }
+
+    func update(informationText: String) {
+        informationLabel.text = informationText
+    }
+
+    func reload(with stories: [Story]) {
+        self.stories = stories
+        tableView.reloadData()
+    }
+
 }
