@@ -10,7 +10,7 @@ import UIKit
 import SwiftSoup
 import WebKit
 
-protocol HTMLViewDelegate: class {
+protocol HTMLViewDelegate: AnyObject {
     func htmlView(_ htmlView: HTMLView, linkTapped url: URL)
 }
 

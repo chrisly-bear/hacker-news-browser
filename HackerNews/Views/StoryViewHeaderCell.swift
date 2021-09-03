@@ -8,7 +8,7 @@
 
 import UIKit
 
-protocol StoryViewHeaderCellDelegate: class {
+protocol StoryViewHeaderCellDelegate: AnyObject {
     func StoryViewHeaderCellHostButtonTapped(_ cell: StoryViewHeaderCell)
 }
 

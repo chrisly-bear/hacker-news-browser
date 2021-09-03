@@ -8,7 +8,7 @@
 
 import UIKit
 
-protocol CommentCellDelegate: class {
+protocol CommentCellDelegate: AnyObject {
     func commentCell(_ commentCell: CommentCell, linkTapped url: URL)
 }
 
