@@ -54,33 +54,42 @@ class StoriesViewModel: StoriesViewModelType, StoriesViewModelOutputs {
 
     let storyImageInfoStore: StoryImageInfoStore
 
-    private let store: StoryStore
-
     private let type: StoryQueryType
 
-    private var hasMore: Bool = false
+    private let api: APIClient
 
-    init(storyQueryType type: StoryQueryType, storyStore: StoryStore, storyImageInfoStore: StoryImageInfoStore, favoritesStore: FavoritesStore) {
+    private var nextPage: Int = 1
+
+    private var hasMore: Bool = true
+
+    private var fetchedIDs: Set<Int> = []
+
+    init(storyQueryType type: StoryQueryType, storyImageInfoStore: StoryImageInfoStore, favoritesStore: FavoritesStore, api: APIClient) {
         self.type = type
-        self.store = storyStore
         self.storyImageInfoStore = storyImageInfoStore
         self.favoritesStore = favoritesStore
+        self.api = api
     }
 
-    private func load(offset: Int = 0) {
+    private func load() {
+        guard hasMore else { return }
         hasMore = false
-        store.stories(for: self.type, offset: offset, limit: 10) { [weak self] (result) in
+        api.stories(for: type, page: nextPage) { [weak self] result in
             guard let strongSelf = self else { return }
-            switch result {
-            case .success(let stories):
-                if offset == 0 {
-                    strongSelf.stories = stories
-                } else {
-                    strongSelf.stories.append(contentsOf: stories)
+            DispatchQueue.main.async {
+                switch result {
+                case .success(let stories):
+                    if !stories.isEmpty {
+                        self?.stories.append(contentsOf: stories.filter { story in
+                            !strongSelf.fetchedIDs.contains(story.id)
+                        })
+                        stories.forEach { self?.fetchedIDs.insert($0.id) }
+                        self?.nextPage += 1
+                        self?.hasMore = true
+                    }
+                case .failure(let error):
+                    self?.didReceiveServiceError(error)
                 }
-                strongSelf.hasMore = stories.count == 10 ? true : false
-            case .failure(let error):
-                strongSelf.didReceiveServiceError(error)
             }
         }
     }
@@ -95,14 +104,16 @@ extension StoriesViewModel: StoriesViewModelInputs {
 
     func didPullToRefresh() {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            self.nextPage = 1
+            self.hasMore = true
+            self.stories = []
+            self.fetchedIDs = []
             self.load()
         }
     }
 
     func lastCellWillDisplay() {
-        if hasMore {
-            load(offset: stories.count)
-        }
+        load()
     }
 
     func storyCellCommentButtonTapped(at indexPath: IndexPath) {
