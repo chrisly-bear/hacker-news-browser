@@ -71,21 +71,27 @@ private struct HackerNewsWidgetView: View {
                     ForEach(entry.stories[0...min(1, entry.stories.count - 1)]) { story in
                         StoryInfoView(story: story, family: .systemSmall)
                     }
-                }.padding()
+                }
+                .padding()
+                .backgroundCompat()
             case .systemMedium:
                 VStack(alignment: .leading, spacing: 3) {
                     StoriesHeaderView()
                     ForEach(entry.stories[0...min(1, entry.stories.count - 1)]) { story in
                         StoryInfoView(story: story, family: .systemMedium)
                     }
-                }.padding()
+                }
+                .padding()
+                .backgroundCompat()
             case .systemLarge:
                 VStack(alignment: .leading, spacing: 3) {
                     StoriesHeaderView()
                     ForEach(entry.stories[0...min(3, entry.stories.count - 1)]) { story in
                         StoryInfoView(story: story, family: .systemLarge)
                     }
-                }.padding()
+                }
+                .padding()
+                .backgroundCompat()
             default:
                 Text("Default")
             }
@@ -95,6 +101,17 @@ private struct HackerNewsWidgetView: View {
     }
 }
 
+// Extension for handling the containerBackground based on iOS version
+private extension View {
+    @ViewBuilder
+    func backgroundCompat() -> some View {
+        if #available(iOS 17.0, *) {
+            self.containerBackground(for: .widget) {} // iOS 17 background
+        } else {
+            self.background(Color(.systemBackground)) // Fallback for earlier versions
+        }
+    }
+}
 
 @main
 
